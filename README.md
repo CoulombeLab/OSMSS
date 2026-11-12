@@ -1,10 +1,12 @@
 # One Stop MS Shop (OSMSS)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24170666.svg)](https://doi.org/10.5281/zenodo.24170666)
+
 **Statistical analysis and interpretation of quantitative proteomics data for non-coders.**
 
 OSMSS is a no-code R Shiny application for differential abundance analysis of mass spectrometry proteomics data. It reads search results exported from Proteome Discoverer, MaxQuant, FragPipe, DIA-NN or Spectronaut. A short wizard records your experimental design and selects the analysis route. OSMSS checks whether the data are already normalized, then runs established statistical methods: proDA, limma, SAINTexpress and Fisher's exact test. Every analysis produces a **case-specific methods text** that records the counts at each filter, the checks, the decisions made and why, and the software versions used.
 
-<!-- TODO before release: add the repository URL, release version, Zenodo DOI and the bioRxiv/JPR citation (see "Citing OSMSS"). -->
+<!-- TODO: add the bioRxiv DOI to "Citing OSMSS" once the preprint is posted. -->
 
 ---
 
@@ -373,7 +375,7 @@ Please also cite the methods OSMSS ran for you. The generated methods text for e
 - Scansite
 - 14-3-3-Pred
 
-**Software archive:** each release is archived on [Zenodo](https://zenodo.org), and the DOI is shown on the [releases page](https://github.com/CoulombeLab/OSMSS/releases). GitHub's **Cite this repository** button, in the repository's sidebar, gives the citation in several formats. <!-- TODO: replace with the Zenodo DOI for v3.1 -->
+**Software archive:** OSMSS 3.1 is archived on Zenodo, [doi:10.5281/zenodo.24170667](https://doi.org/10.5281/zenodo.24170667). To cite all versions, or always the latest one, use [doi:10.5281/zenodo.24170666](https://doi.org/10.5281/zenodo.24170666). GitHub's **Cite this repository** button, in the repository's sidebar, gives the citation in several formats.
 
 ---
 

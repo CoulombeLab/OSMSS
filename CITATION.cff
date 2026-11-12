@@ -18,6 +18,14 @@ authors:
     affiliation: "University of Michigan Medical School"
 version: "3.1"
 date-released: "2026-11-12"
+doi: 10.5281/zenodo.24170667
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24170667
+    description: "OSMSS 3.1 (this version)"
+  - type: doi
+    value: 10.5281/zenodo.24170666
+    description: "All versions of OSMSS (resolves to the latest)"
 license: GPL-3.0-or-later
 repository-code: "https://github.com/CoulombeLab/OSMSS"
 url: "https://github.com/CoulombeLab/OSMSS"
