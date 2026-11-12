@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use OSMSS, please cite it as below."
+type: software
+title: "OSMSS (One Stop MS Shop)"
+abstract: >-
+  OSMSS is a no-code R Shiny application for the statistical analysis and
+  interpretation of quantitative proteomics data. It reads search results from
+  Proteome Discoverer, MaxQuant, FragPipe, DIA-NN and Spectronaut, records the
+  experimental design through a short wizard, selects the analysis route,
+  runs established statistical methods (proDA, limma, SAINTexpress) and writes
+  a case-specific methods text for every analysis.
+authors:
+  - family-names: Cohen
+    given-names: Erez
+    affiliation: "University of Michigan Medical School"
+  - family-names: Coulombe
+    given-names: Pierre A.
+    affiliation: "University of Michigan Medical School"
+version: "3.1"
+date-released: "2026-11-12"
+license: GPL-3.0-or-later
+repository-code: "https://github.com/CoulombeLab/OSMSS"
+url: "https://github.com/CoulombeLab/OSMSS"
+keywords:
+  - proteomics
+  - mass spectrometry
+  - differential abundance
+  - phosphoproteomics
+  - R
+  - Shiny
+  - limma
+  - proDA
+  - SAINTexpress

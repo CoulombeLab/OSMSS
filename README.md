@@ -114,10 +114,10 @@ On any system, to install by hand, follow steps 1–3 below.
 
 ### 1. Get the code
 
-Clone the repository, or download and unzip a release:
+Clone the repository, or download and unzip a [release](https://github.com/CoulombeLab/OSMSS/releases):
 
 ```bash
-git clone <REPOSITORY_URL> OSMSS
+git clone https://github.com/CoulombeLab/OSMSS.git
 ```
 
 ### 2. Install all R packages (one command)
@@ -373,7 +373,7 @@ Please also cite the methods OSMSS ran for you. The generated methods text for e
 - Scansite
 - 14-3-3-Pred
 
-Software archive: <!-- TODO: Zenodo DOI for the release -->
+**Software archive:** each release is archived on [Zenodo](https://zenodo.org), and the DOI is shown on the [releases page](https://github.com/CoulombeLab/OSMSS/releases). GitHub's **Cite this repository** button, in the repository's sidebar, gives the citation in several formats. <!-- TODO: replace with the Zenodo DOI for v3.1 -->
 
 ---
 
