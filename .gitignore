@@ -1,0 +1,54 @@
+# OSMSS .gitignore
+# Everything below is either private, licensed (cannot be redistributed),
+# regenerated at run time, or local working files.
+
+# --- Private / lab data ------------------------------------------------------
+data/FragpipeDB/
+PSCP and Powershell commands.txt
+
+# --- Licensed data, downloaded by each user (CC BY-NC-SA 3.0) ----------------
+# The Kinase Library matrices and everything derived from them
+data/matrices/
+data/Background/
+cache/
+# PhosphoSitePlus
+data/Phosphorylation_site_dataset/
+data/Kinase_Substrate_Dataset/
+
+# --- Regenerated at run time --------------------------------------------------
+# PhosR reference extracts (rebuilt by ensure_phosr_reference())
+data/KSEA/*.rds
+# UniProt reference proteomes (downloaded on first PhosR/KSEA export)
+data/KSEA/*.fasta
+data/KSEA/*.fasta.gz
+data/KSEA/*.part
+# MSigDB gene-set cache (re-downloaded through msigdbr; KEGG terms apply)
+data/GSEA/
+prerun_cache/
+logs/
+
+# --- SAINTexpress: installed by each user (see README); not redistributed ----
+# Keep only the placeholder that tells users where to put it.
+SAINT/*
+!SAINT/README.txt
+
+# --- Local working files -------------------------------------------------------
+Troubelshooting/
+Troubleshoot/
+*.zip
+restart.txt
+.claude/
+
+# --- R / RStudio / OS ----------------------------------------------------------
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Created by the Windows installer in the install folder ---------------------
+Start OSMSS.cmd
+start-osmss.sh
+Start OSMSS.command
