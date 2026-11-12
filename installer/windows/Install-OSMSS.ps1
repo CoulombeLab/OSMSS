@@ -29,7 +29,10 @@ $Links = @{
   CRAN  = 'https://cran.r-project.org/bin/windows/base/'
   SAINT = 'https://sourceforge.net/projects/saint-apms/files/SAINTexpress_v3.6.3__2018-03-09.tar.gz/download'
   TKL   = 'https://github.com/TheKinaseLibrary/kinase-library/tree/master/src/kinase_library/databases/matrices'
+  PSP   = 'https://www.phosphosite.org/staticDownloads'
 }
+# PhosphoSitePlus datasets OSMSS reads (each may be kept as downloaded, .gz, or unpacked)
+$PspNames = @('Phosphorylation_site_dataset', 'Kinase_Substrate_Dataset')
 $SaintFolder = 'SAINTexpress_v3.6.3__2018-03-09'
 $TklFiles = [ordered]@{
   'ser_thr_all_log2_matrices.tsv'  = 'ser_thr'
@@ -46,6 +49,7 @@ $state = @{
   R         = $null      # object: Version, Rscript, Dir
   SaintDir  = $null      # folder holding SAINTexpress-int.exe
   Tkl       = @{}        # file name -> full path
+  Psp       = @{}        # dataset name -> full path
   TempDirs  = New-Object System.Collections.ArrayList
   Proc      = $null
   OutLog    = $null
@@ -177,6 +181,44 @@ function Find-Tkl([string[]]$paths) {
   return @{ Found = $found; Bad = $bad }
 }
 
+function Test-PspFile([string]$file) {
+  # A PhosphoSitePlus table (plain or gzipped) has a header line starting with GENE<tab>
+  # within its first lines, below PSP's notice. Only that line is looked for; nothing is shown.
+  $fi = Get-Item $file
+  if ($fi.Length -lt 100000) { return $false }
+  $fs = [System.IO.File]::OpenRead($file)
+  try {
+    $b1 = $fs.ReadByte(); $b2 = $fs.ReadByte(); [void]$fs.Seek(0, 'Begin')
+    $stream = if ($b1 -eq 0x1F -and $b2 -eq 0x8B) { New-Object System.IO.Compression.GZipStream($fs, [System.IO.Compression.CompressionMode]::Decompress) } else { $fs }
+    $sr = New-Object System.IO.StreamReader($stream)
+    for ($k = 0; $k -lt 40 -and -not $sr.EndOfStream; $k++) { if ($sr.ReadLine() -match "^GENE`t") { return $true } }
+    return $false
+  } catch { return $false } finally { $fs.Close() }
+}
+
+function Get-PspName([string]$file) {
+  # Which dataset a file is, from its name (Phosphorylation_site_dataset, .gz, .txt, (1) copies ...)
+  $leaf = (Split-Path $file -Leaf) -replace '\.(gz|txt|tsv)$', '' -replace '\.(gz|txt|tsv)$', '' -replace '\s*\(\d+\)$', ''
+  foreach ($n in $PspNames) { if ($leaf -ieq $n) { return $n } }
+  return $null
+}
+
+function Find-Psp([string[]]$paths) {
+  $found = @{}; $bad = New-Object System.Collections.ArrayList
+  foreach ($p in $paths) {
+    $cands = @()
+    if (Test-Path $p -PathType Container) { $cands = @(Get-ChildItem $p -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object FullName) }
+    elseif ($p.ToLower().EndsWith('.zip')) { $d = Expand-Download $p @(); if ($d) { $cands = @(Get-ChildItem $d -Recurse -File | ForEach-Object FullName) } }
+    else { $cands = @($p) }
+    foreach ($c in $cands) {
+      $n = Get-PspName $c
+      if (-not $n) { continue }
+      if (Test-PspFile $c) { $found[$n] = $c } else { [void]$bad.Add($n) }
+    }
+  }
+  return @{ Found = $found; Bad = @($bad | Where-Object { -not $found.ContainsKey($_) } | Select-Object -Unique) }
+}
+
 function Test-SamePath([string]$a, [string]$b) {
   $na = [System.IO.Path]::GetFullPath($a).TrimEnd('\')
   $nb = [System.IO.Path]::GetFullPath($b).TrimEnd('\')
@@ -205,6 +247,20 @@ function Install-Tkl([string]$target) {
     $dest = Join-Path $target ("data\matrices\" + $TklFiles[$name])
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
     Copy-Item $state.Tkl[$name] $dest -Force
+    Add-Note "$name copied to $dest"
+  }
+}
+
+function Install-Psp([string]$target) {
+  foreach ($name in $state.Psp.Keys) {
+    $src  = $state.Psp[$name]
+    $dest = Join-Path $target "data\$name"
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    # keep one copy only: OSMSS reads <name>, <name>.txt or <name>.gz, in that order
+    foreach ($old in @($name, "$name.txt", "$name.gz")) { Remove-Item (Join-Path $dest $old) -Force -ErrorAction SilentlyContinue }
+    $fs = [System.IO.File]::OpenRead($src); $gz = ($fs.ReadByte() -eq 0x1F -and $fs.ReadByte() -eq 0x8B); $fs.Close()
+    $ext = if ($gz) { '.gz' } elseif ($src -match '\.txt$') { '.txt' } else { '' }
+    Copy-Item $src (Join-Path $dest ($name + $ext)) -Force
     Add-Note "$name copied to $dest"
   }
 }
@@ -350,8 +406,9 @@ $p0 = New-Page 'Welcome to OSMSS Setup'
   "  2.  check that R (version $MinR or later) is installed,`r`n" +
   "  3.  optionally set up SAINTexpress, for affinity-purification (AP-MS) scoring,`r`n" +
   "  4.  optionally add The Kinase Library files, for kinase prediction,`r`n" +
-  "  5.  install the R packages OSMSS needs (packages you already have are not updated),`r`n" +
-  "  6.  create a desktop shortcut that starts OSMSS.`r`n`r`n" +
+  "  5.  optionally add the PhosphoSitePlus files, for known phosphosites,`r`n" +
+  "  6.  install the R packages OSMSS needs (packages you already have are not updated),`r`n" +
+  "  7.  create a desktop shortcut that starts OSMSS.`r`n`r`n" +
   "Installing the R packages needs an internet connection and can take 10 to 30 minutes.`r`n`r`n" +
   "OSMSS is free software under the GNU General Public License, version 3 or later. SAINTexpress and " +
   "The Kinase Library are separate works with their own licenses.") 0 330)
@@ -508,11 +565,61 @@ $btnTklFolder.Add_Click({
   if ($d.ShowDialog() -eq 'OK') { Set-Tkl @($d.SelectedPath) }
 })
 
-# ---- Page 5: ready ----
+# ---- Page 5: PhosphoSitePlus ----
+$pPsp = New-Page 'Known phosphosites: PhosphoSitePlus'
+[void](Add-Label $pPsp ("PhosphoSitePlus adds known phosphorylation sites and kinase-substrate pairs to the kinase prediction " +
+  "tools (the PhosphoSitePlus overlay). Its license (CC BY-NC-SA 3.0, non-commercial use) does not let OSMSS include it, " +
+  "so download it yourself: register for free on PhosphoSitePlus, then on its Downloads page get`r`n" +
+  "  - Phosphorylation_site_dataset.gz`r`n" +
+  "  - Kinase_Substrate_Dataset.gz`r`n" +
+  "Either the .gz files or their unpacked versions work.") 0 105)
+[void](Add-Link $pPsp 'Open the PhosphoSitePlus Downloads page (opens your browser)' $Links.PSP 108)
+$rbPspNow  = New-Object System.Windows.Forms.RadioButton
+$rbPspSkip = New-Object System.Windows.Forms.RadioButton
+$rbPspNow.Text  = 'Add the PhosphoSitePlus files now'
+$rbPspSkip.Text = 'Skip this step; I will add them later (see README.md, "Reference data you download yourself")'
+$rbPspNow.Location  = New-Object System.Drawing.Point(0, 140);  $rbPspNow.Size  = New-Object System.Drawing.Size(660, 24)
+$rbPspSkip.Location = New-Object System.Drawing.Point(0, 290);  $rbPspSkip.Size = New-Object System.Drawing.Size(660, 24)
+$rbPspSkip.Checked = $true
+$pPsp.Controls.Add($rbPspNow); $pPsp.Controls.Add($rbPspSkip)
+$btnPspFiles  = Add-Button $pPsp 'I downloaded them - select the files...' 20 170 300
+$btnPspFolder = Add-Button $pPsp 'Select a folder...' 330 170 160
+$lblPsp = Add-Label $pPsp '' 210 75
+function Set-Psp([string[]]$paths) {
+  $form.Cursor = 'WaitCursor'
+  try {
+    $res = Find-Psp $paths
+    foreach ($k in $res.Found.Keys) { $state.Psp[$k] = $res.Found[$k] }
+    $have = @($PspNames | Where-Object { $state.Psp.ContainsKey($_) })
+    $missing = @($PspNames | Where-Object { -not $state.Psp.ContainsKey($_) })
+    $msg = 'Found: ' + $(if ($have.Count) { $have -join ', ' } else { 'none' })
+    if ($res.Bad.Count) { $msg += "`r`nNot usable (not a PhosphoSitePlus table, or incomplete): " + ($res.Bad -join ', ') }
+    if ($missing.Count) { $msg += "`r`nStill needed: " + ($missing -join ', '); $lblPsp.ForeColor = $red }
+    else { $rbPspNow.Checked = $true; $lblPsp.ForeColor = $green }
+    $lblPsp.Text = $msg
+  } catch {
+    $lblPsp.Text = "Could not read the selection: $($_.Exception.Message)"; $lblPsp.ForeColor = $red
+  } finally { $form.Cursor = 'Default' }
+}
+$btnPspFiles.Add_Click({
+  $d = New-Object System.Windows.Forms.OpenFileDialog
+  $d.Title = 'Select Phosphorylation_site_dataset and Kinase_Substrate_Dataset (.gz or unpacked)'
+  $d.Filter = 'PhosphoSitePlus files (*.gz, *.txt, *.zip, no extension)|*.gz;*.txt;*.zip;*_dataset;*_Dataset|All files (*.*)|*.*'
+  $d.Multiselect = $true
+  $d.InitialDirectory = Join-Path $env:USERPROFILE 'Downloads'
+  if ($d.ShowDialog() -eq 'OK') { Set-Psp $d.FileNames }
+})
+$btnPspFolder.Add_Click({
+  $d = New-Object System.Windows.Forms.FolderBrowserDialog
+  $d.Description = 'Select the folder holding the PhosphoSitePlus files'
+  if ($d.ShowDialog() -eq 'OK') { Set-Psp @($d.SelectedPath) }
+})
+
+# ---- Page 6: ready ----
 $p5 = New-Page 'Ready to install'
 $lblReady = Add-Label $p5 '' 0 330
 
-# ---- Page 6: installing ----
+# ---- Page 7: installing ----
 $p6 = New-Page 'Installing'
 $lblStep = Add-Label $p6 'Preparing...' 0 24
 $bar = New-Object System.Windows.Forms.ProgressBar
@@ -525,7 +632,7 @@ $tbLog.Font = New-Object System.Drawing.Font('Consolas', 8.5)
 $tbLog.Location = New-Object System.Drawing.Point(0, 58); $tbLog.Size = New-Object System.Drawing.Size(665, 320)
 $p6.Controls.Add($tbLog)
 
-# ---- Page 7: finish ----
+# ---- Page 8: finish ----
 $p7 = New-Page 'OSMSS is installed'
 $tbSummary = New-Object System.Windows.Forms.TextBox
 $tbSummary.Multiline = $true; $tbSummary.ReadOnly = $true; $tbSummary.ScrollBars = 'Vertical'
@@ -571,6 +678,7 @@ function Start-Install {
     Copy-App $t
     if ($rbSaintNow.Checked -and $state.SaintDir) { $lblStep.Text = 'Setting up SAINTexpress...'; Install-Saint $t }
     if ($rbTklNow.Checked -and $state.Tkl.Count) { $lblStep.Text = 'Adding The Kinase Library files...'; Install-Tkl $t }
+    if ($rbPspNow.Checked -and $state.Psp.Count -eq 2) { $lblStep.Text = 'Adding the PhosphoSitePlus files...'; Install-Psp $t }
     $logDir = Join-Path $t 'logs'; New-Item -ItemType Directory -Force -Path $logDir | Out-Null
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $state.OutLog = Join-Path $logDir "install_packages_$stamp.log"
@@ -636,11 +744,12 @@ function Show-Finish {
   [void]$s.Add('')
   [void]$s.Add('SAINTexpress (AP-MS): ' + $(if ($rbSaintNow.Checked -and $state.SaintDir) { 'set up' } else { 'not set up (can be added later; see README.md)' }))
   [void]$s.Add('The Kinase Library (kinase prediction): ' + $(if ($rbTklNow.Checked -and $state.Tkl.Count) { 'added' } else { 'not added (can be added later; see README.md)' }))
+  [void]$s.Add('PhosphoSitePlus (known phosphosites): ' + $(if ($rbPspNow.Checked -and $state.Psp.Count -eq 2) { 'added' } else { 'not added (can be added later; see README.md)' }))
   [void]$s.Add('')
   [void]$s.Add('To start OSMSS, use the desktop shortcut or "Start OSMSS.cmd" in the install folder.')
   [void]$s.Add('OSMSS opens in your web browser; closing its black console window stops OSMSS.')
   $tbSummary.Text = ($s -join "`r`n")
-  Show-Page 7
+  Show-Page 8
 }
 
 # ------------------------------------------------------------------------------------------
@@ -651,26 +760,27 @@ function Show-Page([int]$n) {
   for ($k = 0; $k -lt $pages.Count; $k++) { $pages[$k].Visible = ($k -eq $n) }
   $script:page = $n
   $header.Text = $pages[$n].Tag
-  $btnBack.Enabled = ($n -gt 0 -and $n -lt 6)
+  $btnBack.Enabled = ($n -gt 0 -and $n -lt 7)
   $btnNext.Enabled = $true
   $btnNext.Text = 'Next >'
-  $btnCancel.Enabled = ($n -lt 7)
+  $btnCancel.Enabled = ($n -lt 8)
   switch ($n) {
     2 { if (-not $state.R) { $state.R = Find-R }; Update-RStatus }
-    5 {
+    6 {
       $lines = @(
         "Install folder:  $($state.Target)",
         "R:  $($state.R.Version)",
         ('SAINTexpress:  ' + $(if ($rbSaintNow.Checked -and $state.SaintDir) { 'will be set up' } else { 'skipped' })),
         ('The Kinase Library:  ' + $(if ($rbTklNow.Checked -and $state.Tkl.Count) { 'will be added (' + ($state.Tkl.Keys -join ', ') + ')' } else { 'skipped' })),
+        ('PhosphoSitePlus:  ' + $(if ($rbPspNow.Checked -and $state.Psp.Count -eq 2) { 'will be added' } else { 'skipped' })),
         '',
         'Click Install to copy OSMSS and install the R packages it needs. Packages you already have are not updated.',
         'This needs an internet connection and usually takes 10 to 30 minutes.')
       $lblReady.Text = ($lines -join "`r`n`r`n")
       $btnNext.Text = 'Install'
     }
-    6 { $btnNext.Enabled = $false; $btnBack.Enabled = $false; Start-Install }
-    7 { $btnNext.Text = 'Finish'; $btnBack.Enabled = $false }
+    7 { $btnNext.Enabled = $false; $btnBack.Enabled = $false; Start-Install }
+    8 { $btnNext.Text = 'Finish'; $btnBack.Enabled = $false }
   }
 }
 
@@ -697,7 +807,11 @@ $btnNext.Add_Click({
       $missing = @($TklRequired | Where-Object { -not $state.Tkl.ContainsKey($_) })
       if ($rbTklNow.Checked -and $missing.Count) { [void][System.Windows.Forms.MessageBox]::Show(('Still needed: ' + ($missing -join ', ') + "`r`nSelect them, or choose ""Skip this step""."), 'OSMSS Setup'); return }
     }
-    7 {
+    5 {
+      $missing = @($PspNames | Where-Object { -not $state.Psp.ContainsKey($_) })
+      if ($rbPspNow.Checked -and $missing.Count) { [void][System.Windows.Forms.MessageBox]::Show(('Still needed: ' + ($missing -join ', ') + "`r`nSelect them, or choose ""Skip this step""."), 'OSMSS Setup'); return }
+    }
+    8 {
       try {
         $launcher = Write-Launcher $state.Target
         if ($cbShortcut.Checked) { [void](New-DesktopShortcut $state.Target $launcher) }
@@ -738,7 +852,7 @@ try {
 
 if ($UiTestReport) {
   # Test mode: build every page and the finish summary without showing the window.
-  foreach ($n in 0..5) { Show-Page $n; "page ${n}: " + $pages[$n].Tag + " | Next enabled: " + $btnNext.Enabled }
+  foreach ($n in 0..6) { Show-Page $n; "page ${n}: " + $pages[$n].Tag + " | Next enabled: " + $btnNext.Enabled }
   $state.Report = $UiTestReport; $state.OutLog = $UiTestReport
   Show-Finish
   "finish page: " + $header.Text

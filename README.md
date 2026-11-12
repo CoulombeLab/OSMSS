@@ -83,9 +83,10 @@ xcode-select --install
 2. Download OSMSS (on GitHub: **Code → Download ZIP**, or a release ZIP) and unzip it.
 3. Double-click **`Install OSMSS (Windows).cmd`**. If Windows warns that the file came from the internet, choose **More info → Run anyway**.
 
-The wizard asks where to install OSMSS and checks for R. It then offers two optional steps, each of which you can skip and do later:
+The wizard asks where to install OSMSS and checks for R. It then offers three optional steps, each of which you can skip and do later:
 - **SAINTexpress, for AP-MS:** point it to the downloaded `SAINTexpress_v3.6.3__2018-03-09.tar.gz`.
 - **The Kinase Library files, for kinase prediction:** point it to the downloaded `.tsv` files or ZIP.
+- **PhosphoSitePlus, for known phosphosites:** point it to the downloaded `Phosphorylation_site_dataset.gz` and `Kinase_Substrate_Dataset.gz`, or their unpacked versions. Downloading them needs a free PhosphoSitePlus registration.
 
 It installs the R packages OSMSS needs, which takes 10–30 minutes and needs internet. Packages you already have are **not updated**, and the last page lists them and any that failed. Finally it creates an **OSMSS** shortcut on the desktop. The shortcut opens OSMSS in your browser; closing its console window stops OSMSS. The package-install log is kept in `logs/` in the install folder.
 

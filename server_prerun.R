@@ -351,7 +351,7 @@ server_prerun <- function(input, output, session, rv, logger) {
         tags$p("Your PTM data is successfully loaded. Where would you like to begin?"),
         tags$div(class = "d-grid gap-2",
           tags$button(class = "btn btn-primary btn-lg text-start",
-            icon("chart-scatter"), " Explore Data: PTM PCA",
+            icon("braille"), " Explore Data: PTM PCA",
             onclick = "
               $('.modal').modal('hide'); 
               $('[data-tab=\"PTM PCA\"]').click();

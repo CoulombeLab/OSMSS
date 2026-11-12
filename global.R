@@ -438,7 +438,7 @@ missing_data_modal <- function(need_tkl = FALSE, need_psp = FALSE) {
     p("This analysis uses reference data that OSMSS cannot redistribute. ",
       "Download the files below and place them in your OSMSS data folder for full functionality."),
     tkl_part, psp_part,
-    p(class = "text-muted", style = "font-size: 0.85em;",
+    if (need_tkl) p(class = "text-muted", style = "font-size: 0.85em;",
       "Restart OSMSS after adding the Kinase Library files."),
     easyClose = TRUE, footer = modalButton("Close")
   )

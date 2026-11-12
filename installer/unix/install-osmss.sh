@@ -16,6 +16,7 @@ MIN_R="4.4.0"
 SAINT_NAME="SAINTexpress_v3.6.3__2018-03-09"
 SAINT_URL="https://sourceforge.net/projects/saint-apms/files/SAINTexpress_v3.6.3__2018-03-09.tar.gz/download"
 TKL_URL="https://github.com/TheKinaseLibrary/kinase-library/tree/master/src/kinase_library/databases/matrices"
+PSP_URL="https://www.phosphosite.org/staticDownloads"
 case "$OS" in
   Darwin) CRAN_URL="https://cran.r-project.org/bin/macosx/" ;;
   *)      CRAN_URL="https://cran.r-project.org/bin/linux/" ;;
@@ -25,6 +26,7 @@ TARGET="$HOME/OSMSS"
 RSCRIPT=""; RVERSION=""
 SAINT_SRC=""           # downloaded .tar.gz or unpacked folder
 TKL_ST=""; TKL_FAV=""; TKL_Y=""
+PSP_SITES=""; PSP_KS=""        # PhosphoSitePlus Phosphorylation_site_dataset / Kinase_Substrate_Dataset
 TMPDIRS=""
 STAMP="$(date +%Y%m%d_%H%M%S)"
 
@@ -140,7 +142,7 @@ find_r() {
 }
 
 check_r() {
-  step "Step 2 of 6: R"
+  step "Step 2 of 7: R"
   say "OSMSS runs in R. It needs R $MIN_R or later (R 4.6.1 was used for the OSMSS paper)."
   while true; do
     find_r
@@ -198,7 +200,7 @@ check_linux_build_tools() {
 # SAINTexpress and The Kinase Library
 # ----------------------------------------------------------------------------------------
 choose_saint() {
-  step "Step 3 of 6: affinity purification (AP-MS) with SAINTexpress (optional)"
+  step "Step 3 of 7: affinity purification (AP-MS) with SAINTexpress (optional)"
   say "To score AP-MS experiments with SAINTexpress, download SAINTexpress 3.6.3 from its authors"
   say "(file $SAINT_NAME.tar.gz, about 10 MB). Everything else in OSMSS works without it."
   if [ "$OS" = "Darwin" ]; then
@@ -266,7 +268,7 @@ collect_tkl() {  # collect_tkl path... (files, ZIPs or folders) -> sets TKL_ST /
 }
 
 choose_tkl() {
-  step "Step 4 of 6: kinase prediction with The Kinase Library (optional)"
+  step "Step 4 of 7: kinase prediction with The Kinase Library (optional)"
   say "The kinase prediction tools use The Kinase Library's specificity matrices. Their license"
   say "(CC BY-NC-SA 3.0, non-commercial use) does not let OSMSS include them, so download them yourself:"
   say "  ser_thr/ser_thr_all_log2_matrices.tsv, ser_thr/st_favorability.tsv, tyrosine/tyrosine_all_log2_matrices.tsv"
@@ -292,6 +294,63 @@ choose_tkl() {
     bad "Still needed: $need"
     say "(Files smaller than 5 kB or that are web pages are not accepted; on GitHub use 'Download raw file'.)"
     ask_yn "Select more files? (No = skip The Kinase Library)" y || { TKL_ST=""; TKL_FAV=""; TKL_Y=""; warn "The Kinase Library skipped."; return; }
+  done
+}
+
+is_gzip() { [ "$(head -c 2 "$1" | od -An -tx1 | tr -d ' \n')" = "1f8b" ]; }
+
+valid_psp() {  # a PhosphoSitePlus table (plain or .gz): >= 100 kB, a "GENE<tab>" header within its first lines
+  local f="$1" size
+  [ -f "$f" ] || return 1
+  size="$(wc -c < "$f" | tr -d ' ')"; [ "$size" -ge 100000 ] || return 1
+  if is_gzip "$f"; then gzip -cd "$f" 2>/dev/null | head -n 40 | grep -q "^GENE$(printf '\t')"
+  else head -n 40 "$f" | grep -q "^GENE$(printf '\t')"; fi
+}
+
+psp_name() {  # Phosphorylation_site_dataset or Kinase_Substrate_Dataset, from a file name (.gz, .txt, "(1)" copies)
+  local b; b="$(basename "$1")"; b="${b%.gz}"; b="${b%.txt}"; b="${b%.tsv}"; b="$(printf '%s' "$b" | sed 's/ *([0-9]*)$//')"
+  case "$b" in Phosphorylation_site_dataset|Kinase_Substrate_Dataset) printf '%s' "$b" ;; esac
+}
+
+collect_psp() {  # collect_psp path... (files, ZIPs or folders) -> sets PSP_SITES / PSP_KS
+  local p f n list
+  for p in "$@"; do
+    [ -n "$p" ] || continue
+    p="$(expand_path "$p")"
+    if [ -d "$p" ]; then list="$(find "$p" -type f \( -name 'Phosphorylation_site_dataset*' -o -name 'Kinase_Substrate_Dataset*' \) 2>/dev/null)"
+    else case "$p" in *.zip|*.ZIP) list="$(find "$(unpack_zip "$p")" -type f 2>/dev/null)" ;; *) list="$p" ;; esac; fi
+    local IFS=$'\n'
+    for f in $list; do
+      n="$(psp_name "$f")"; [ -n "$n" ] || continue
+      valid_psp "$f" || { warn "Not a usable PhosphoSitePlus table: $f"; continue; }
+      case "$n" in Phosphorylation_site_dataset) PSP_SITES="$f" ;; Kinase_Substrate_Dataset) PSP_KS="$f" ;; esac
+    done
+    unset IFS
+  done
+}
+
+choose_psp() {
+  step "Step 5 of 7: known phosphosites with PhosphoSitePlus (optional)"
+  say "PhosphoSitePlus adds known phosphorylation sites and kinase-substrate pairs to the kinase prediction tools."
+  say "Its license (CC BY-NC-SA 3.0, non-commercial use) does not let OSMSS include it, so download it yourself:"
+  say "register for free on PhosphoSitePlus, then on its Downloads page get Phosphorylation_site_dataset.gz and"
+  say "Kinase_Substrate_Dataset.gz. Either the .gz files or their unpacked versions work."
+  if ! ask_yn "Add the PhosphoSitePlus files now? (No = skip; see README.md to add them later)" y; then
+    warn "PhosphoSitePlus skipped."; return
+  fi
+  say "Opening the PhosphoSitePlus Downloads page:"; open_url "$PSP_URL"
+  while true; do
+    printf 'When both downloads have finished, press Enter to select them. '; read -r _
+    local list; list="$(pick files "Select Phosphorylation_site_dataset and Kinase_Substrate_Dataset (.gz or unpacked)")"
+    if [ -z "$list" ] && ask_yn "Nothing selected. Select a folder instead?" n; then list="$(pick folder "Select the folder holding the PhosphoSitePlus files")"; fi
+    local IFS=$'\n'; collect_psp $list; unset IFS
+    say "Found:   ${PSP_SITES:+Phosphorylation_site_dataset }${PSP_KS:+Kinase_Substrate_Dataset}"
+    if [ -n "$PSP_SITES" ] && [ -n "$PSP_KS" ]; then ok "The PhosphoSitePlus files are ready."; return; fi
+    local need=""
+    [ -z "$PSP_SITES" ] && need="Phosphorylation_site_dataset "
+    [ -z "$PSP_KS" ]    && need="${need}Kinase_Substrate_Dataset"
+    bad "Still needed: $need"
+    ask_yn "Select more files? (No = skip PhosphoSitePlus)" y || { PSP_SITES=""; PSP_KS=""; warn "PhosphoSitePlus skipped."; return; }
   done
 }
 
@@ -357,6 +416,19 @@ install_tkl() {
   [ -n "$TKL_FAV" ] && cp "$TKL_FAV" "$TARGET/data/matrices/ser_thr/"
   cp "$TKL_Y" "$TARGET/data/matrices/tyrosine/"
   ok "The Kinase Library files copied to data/matrices."
+}
+
+install_psp() {
+  [ -n "$PSP_SITES" ] && [ -n "$PSP_KS" ] || return 0
+  local n src ext
+  for n in Phosphorylation_site_dataset Kinase_Substrate_Dataset; do
+    if [ "$n" = "Phosphorylation_site_dataset" ]; then src="$PSP_SITES"; else src="$PSP_KS"; fi
+    mkdir -p "$TARGET/data/$n"
+    rm -f "$TARGET/data/$n/$n" "$TARGET/data/$n/$n.txt" "$TARGET/data/$n/$n.gz"   # OSMSS reads one of these; keep one
+    if is_gzip "$src"; then ext=".gz"; else case "$src" in *.txt) ext=".txt" ;; *) ext="" ;; esac; fi
+    cp "$src" "$TARGET/data/$n/$n$ext"
+  done
+  ok "The PhosphoSitePlus files copied to data/."
 }
 
 install_packages() {
@@ -458,6 +530,7 @@ summary() {
   fi
   say "SAINTexpress (AP-MS): ${SAINT_STATUS:-not set up (can be added later; see README.md)}"
   if [ -n "$TKL_ST" ] && [ -n "$TKL_Y" ]; then say "The Kinase Library: added"; else say "The Kinase Library: not added (can be added later; see README.md)"; fi
+  if [ -n "$PSP_SITES" ] && [ -n "$PSP_KS" ]; then say "PhosphoSitePlus: added"; else say "PhosphoSitePlus: not added (can be added later; see README.md)"; fi
   say "Shortcut: ${SHORTCUT:-none}"
   say "To start OSMSS, use the shortcut or run $TARGET/start-osmss.sh. OSMSS opens in your web browser;"
   say "closing its terminal window stops OSMSS."
@@ -488,13 +561,14 @@ say "  1. copy OSMSS to a folder you choose,"
 say "  2. check that R $MIN_R or later is installed,"
 say "  3. optionally set up SAINTexpress, for affinity-purification (AP-MS) scoring,"
 say "  4. optionally add The Kinase Library files, for kinase prediction,"
-say "  5. install the R packages OSMSS needs (packages you already have are not updated),"
-say "  6. create a shortcut that starts OSMSS."
+say "  5. optionally add the PhosphoSitePlus files, for known phosphosites,"
+say "  6. install the R packages OSMSS needs (packages you already have are not updated),"
+say "  7. create a shortcut that starts OSMSS."
 say "It needs an internet connection. OSMSS is free software under the GNU GPL, version 3 or later;"
 say "SAINTexpress and The Kinase Library are separate works with their own licenses."
 ask_yn "Continue?" y || { say "Setup cancelled."; exit 0; }
 
-step "Step 1 of 6: install folder"
+step "Step 1 of 7: install folder"
 while true; do
   printf 'Install folder [%s]: ' "$TARGET"; read -r t
   [ -n "$t" ] && TARGET="$(expand_path "$t")"
@@ -510,20 +584,23 @@ check_r
 check_linux_build_tools
 choose_saint
 choose_tkl
+choose_psp
 
-step "Step 5 of 6: ready to install"
+step "Step 6 of 7: ready to install"
 say "Install folder:      $TARGET"
 say "R:                   $RVERSION"
 say "SAINTexpress:        $([ -n "$SAINT_SRC" ] && printf 'will be set up' || printf 'skipped')"
 say "The Kinase Library:  $([ -n "$TKL_ST" ] && [ -n "$TKL_Y" ] && printf 'will be added' || printf 'skipped')"
+say "PhosphoSitePlus:     $([ -n "$PSP_SITES" ] && [ -n "$PSP_KS" ] && printf 'will be added' || printf 'skipped')"
 ask_yn "Install now?" y || { say "Setup cancelled."; exit 0; }
 
 mkdir -p "$TARGET/logs"
 copy_app
 install_tkl
+install_psp
 install_saint
 install_packages
-step "Step 6 of 6: shortcut"
+step "Step 7 of 7: shortcut"
 write_launchers
 if ask_yn "Create a desktop shortcut for OSMSS?" y; then make_shortcut; fi
 summary

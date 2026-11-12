@@ -2655,7 +2655,7 @@ server <- function(input, output, session) {
         "processed in batches, even if they already appear to overlap perfectly here."
       ),
       tags$p(class = "fw-semibold mb-1",
-        icon("chart-scatter"), " Uncorrected PCA \u2014 colored by condition:"),
+        icon("braille"), " Uncorrected PCA \u2014 colored by condition:"),
       plotlyOutput("wiz_batch_pca", height = "240px"),
       tags$hr(),
       checkboxInput("wiz_use_batch",

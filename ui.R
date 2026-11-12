@@ -316,7 +316,7 @@ title = tags$a(
                     tags$span(class = "caret-icon", icon("caret-right"))),
         tags$div(id = "submenu_ptm_explore", class = "nav-submenu",
           tags$a(class = "nav-menu-item", `data-tab` = "PTM PCA",
-                 icon("chart-scatter"), " PTM PCA"),
+                 icon("braille"), " PTM PCA"),
           tags$a(class = "nav-menu-item", `data-tab` = "PTM DE",
                  icon("volcano"), " PTM DE"),
           tags$a(class = "nav-menu-item", `data-tab` = "PTM Trends",
@@ -1270,7 +1270,7 @@ title = tags$a(
       # PTM PCA
       conditionalPanel(
         condition = "input.suite_nav == 'PTM PCA'",
-        h4(icon("chart-scatter"), " PTM PCA"),
+        h4(icon("braille"), " PTM PCA"),
 
         uiOutput("ptm_pca_data_status"),
 
@@ -1750,7 +1750,7 @@ title = tags$a(
               condition = "output.ks_has_plex",
               tags$div(class = "d-flex align-items-center gap-2 mt-1",
                 tags$span(class = "badge bg-info text-dark",
-                  icon("shield-check"), " TMT detected"),
+                  icon("shield-halved"), " TMT detected"),
                 tags$span(class = "small text-muted",
                   "Plex batch correction (RUVphospho) will be applied automatically")
               )
@@ -2919,14 +2919,14 @@ title = tags$a(
             navset_tab(
               id = "ptm_pca_tabs",
               nav_panel(
-                title = tags$span(icon("chart-scatter"), " PTM PCA (Unadjusted)"),
+                title = tags$span(icon("braille"), " PTM PCA (Unadjusted)"),
                 value = "ptm_pca",
                 plotlyOutput("ptm_pca_ptm_scatter", height = "500px"),
                 br(),
                 plotlyOutput("ptm_pca_ptm_scree", height = "280px")
               ),
               nav_panel(
-                title = tags$span(icon("chart-scatter"), " Global Protein PCA"),
+                title = tags$span(icon("braille"), " Global Protein PCA"),
                 value = "prot_pca",
                 plotlyOutput("ptm_pca_prot_scatter", height = "500px"),
                 br(),
@@ -2954,7 +2954,7 @@ title = tags$a(
                 plotlyOutput("ptm_volcano_plotly", height = "650px")
               ),
               nav_panel(
-                title = tags$span(icon("chart-scatter"), " FC vs Global"),
+                title = tags$span(icon("braille"), " FC vs Global"),
                 value = "fc_scatter",
                 plotlyOutput("ptm_fc_scatter_plotly", height = "650px")
               ),
@@ -3158,7 +3158,7 @@ title = tags$a(
                           condition = "output.ks_has_plex",
                           tags$div(class = "mt-2 d-flex align-items-center gap-2",
                             tags$span(class = "badge bg-info text-dark flex-shrink-0",
-                              icon("shield-check"), " TMT"),
+                              icon("shield-halved"), " TMT"),
                             tags$span(class = "small",
                               "Plex/batch effects are automatically corrected using ",
                               tags$strong("RUVphospho"), " (k\u00a0=\u00a01) before scoring.",
